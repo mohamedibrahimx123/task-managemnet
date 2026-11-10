@@ -1,0 +1,64 @@
+services:
+  # ------------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # ------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: task-management-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Codex_Black_Ghost232005}
+      POSTGRES_DB: ${POSTGRES_DB:-task_management}
+    volumes:
+      # Persistent Volume: ensures data is not deleted when the container restarts
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-task_management}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ------------------------------------------------------
+  # 2. Node.js Express API Service
+  # ------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: task-management-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-Codex_Black_Ghost232005}@db:5432/${POSTGRES_DB:-task_management}
+      JWT_SECRET: ${JWT_SECRET:-92df8f534bdf143366fe44143f8344ee12777de09da1921667f4860656527831362f03e573be3cff092352c70fe4074d17aa4c16fbd2ff34b47c128e314e4981}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+    # Automatically apply pending database migrations before launching the HTTP server
+    command: sh -c "node dist/database/migrate.js && node dist/server.js"
+
+# ------------------------------------------------------
+# Named Volumes (Persistent Storage)
+# ------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+
+# ------------------------------------------------------
+# Custom Bridge Network (Isolated Internal Communication)
+# ------------------------------------------------------
+networks:
+  app-network:
+    driver: bridge
