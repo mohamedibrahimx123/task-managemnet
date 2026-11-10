@@ -1,3 +1,4 @@
+/// <reference path="../utils/express.d.ts" />
 import type { RequestHandler } from "express";
 
 import { AppError } from "../utils/AppError.js";

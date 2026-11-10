@@ -1,3 +1,4 @@
+/// <reference path="../utils/express.d.ts" />
 import type {
   Request,
   Response,

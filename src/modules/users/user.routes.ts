@@ -1,3 +1,4 @@
+/// <reference path="../../utils/express.d.ts" />
 import { Router } from "express";
 
 import { authenticate } from "../../middleware/auth.middleware.js";
