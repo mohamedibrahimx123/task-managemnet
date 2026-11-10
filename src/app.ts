@@ -9,7 +9,6 @@ import userRoutes from "./modules/users/user.routes.js";
 import adminRoutes from "./modules/admin/admin.route.js";
 
 import { swaggerSpec } from "./docs/swagger.js";
-import swaggerUi from "swagger-ui-express";
 import { pool } from "./config/database.js";
 import { env } from "./config/env.js";
 
@@ -23,7 +22,7 @@ export const app = express();
 // 1. Security Headers (Helmet)
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Disables CSP blocking of Swagger UI resources
+    contentSecurityPolicy: false, // Allows CDN resources for Swagger UI
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
@@ -63,12 +62,54 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-// Swagger Documentation
+// Swagger Documentation (JSON Spec)
 app.get("/api-docs.json", (_req, res) => {
   res.setHeader("Content-Type", "application/json");
   res.json(swaggerSpec);
 });
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Swagger UI (CDN-based for 100% Serverless / Vercel compatibility)
+app.get(["/api-docs", "/api-docs/"], (_req, res) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Management API - Swagger UI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css" />
+  <link rel="icon" type="image/png" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/favicon-32x32.png" />
+  <style>
+    html { box-sizing: border-box; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin: 0; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.min.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        spec: ${JSON.stringify(swaggerSpec)},
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout"
+      });
+    };
+  </script>
+</body>
+</html>`;
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(html);
+});
 
 // 6. API Routes (Auth routes have strict rate limiting)
 app.use("/api/v1/auth", authLimiter, authRoutes);
