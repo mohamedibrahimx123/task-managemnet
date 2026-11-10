@@ -1,4 +1,5 @@
 import swaggerJsdoc from "swagger-jsdoc";
+import { prebuiltPaths } from "./prebuiltPaths.js";
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -13,12 +14,12 @@ const options: swaggerJsdoc.Options = {
 
     servers: [
       {
-        url: "http://localhost:3000/api/v1",
-        description: "Local Development Server",
-      },
-      {
         url: "/api/v1",
         description: "Current Domain Relative URL",
+      },
+      {
+        url: "http://localhost:3000/api/v1",
+        description: "Local Development Server",
       },
     ],
 
@@ -280,4 +281,13 @@ const options: swaggerJsdoc.Options = {
   ],
 };
 
-export const swaggerSpec = swaggerJsdoc(options);
+const jsdocSpec = swaggerJsdoc(options) as Record<string, any>;
+
+// Combine or fallback to prebuiltPaths when running on serverless platforms (Vercel)
+export const swaggerSpec = {
+  ...jsdocSpec,
+  paths:
+    jsdocSpec.paths && Object.keys(jsdocSpec.paths).length > 0
+      ? jsdocSpec.paths
+      : prebuiltPaths,
+};
